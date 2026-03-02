@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenWay — Ванильный Minecraft 1.21.10</title>
+    <style>
+        :root { --main-green: #2ecc71; --dark-bg: #121212; --card-bg: #1e1e1e; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--dark-bg); color: #e0e0e0; line-height: 1.6; margin: 0; scroll-behavior: smooth; }
+        
+        header { 
+            background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&q=80&w=1200') no-repeat center/cover;
+            height: 70vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-bottom: 4px solid var(--main-green);
+        }
+        h1 { font-size: clamp(3rem, 10vw, 4.5rem); color: var(--main-green); margin: 0; letter-spacing: 5px; text-transform: uppercase; text-shadow: 0 0 20px rgba(46, 204, 113, 0.3); }
+        .hero-text { font-size: 1.2rem; color: #bbb; max-width: 600px; margin: 20px 20px; }
+
+        .container { max-width: 1000px; margin: -50px auto 40px; padding: 0 20px; position: relative; }
+        
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 50px; }
+        .info-card { background: var(--card-bg); padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: 0.3s; }
+        .info-card:hover { transform: translateY(-5px); border-color: var(--main-green); }
+        .info-card b { color: var(--main-green); font-size: 1.4rem; display: block; margin-bottom: 5px; }
+
+        section { background: var(--card-bg); padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        h2 { color: var(--main-green); border-left: 4px solid var(--main-green); padding-left: 15px; margin-bottom: 30px; }
+        h3 { color: #fff; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        
+        .rule-group { margin-bottom: 30px; }
+        .rule-item { margin-bottom: 15px; padding-left: 20px; border-left: 1px solid #444; }
+        .rule-num { color: var(--main-green); font-weight: bold; margin-right: 8px; }
+        .accent { color: var(--main-green); font-weight: bold; }
+        .warning { color: #f1c40f; font-style: italic; }
+
+        .btn { display: inline-block; background: var(--main-green); color: #000; padding: 15px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; transition: 0.3s; border: none; cursor: pointer; }
+        .btn:hover { background: #fff; transform: translateY(-3px); box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4); }
+
+        .tip-box { background: rgba(46, 204, 113, 0.1); border: 1px dashed var(--main-green); padding: 25px; border-radius: 10px; text-align: center; }
+        footer { text-align: center; padding: 60px; color: #555; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>GREENWAY</h1>
+    <p class="hero-text">Твое идеальное ванильное выживание.<br>Приватное сообщество без доната и лишнего шума.</p>
+    <a href="#join" class="btn">Подать заявку</a>
+</header>
+
+<div class="container">
+    <div class="info-grid">
+        <div class="info-card"><b>1.21.10</b> Версия</div>
+        <div class="info-card"><b>Whitelist</b> Вход</div>
+        <div class="info-card"><b>Ванилла</b> Геймплей</div>
+        <div class="info-card"><b>Hard</b> Сложность</div>
+    </div>
+
+    <section>
+        <h2>🌿 О нашем мире</h2>
+        <p>GreenWay — это проект для тех, кто устал от серверов с кучей плагинов. У нас только чистая ванилла, мощное железо и адекватные соседи. Мы ценим архитектуру, долгосрочные проекты и честный бартер между игроками.</p>
+    </section>
+
+    <section id="rules">
+        <h2>📜 Кодекс GreenWay</h2>
+        
+        <div class="rule-group">
+            <h3>🛡 Главные запреты</h3>
+            <div class="rule-item"><span class="rule-num">1.1</span> <b>Гриферство:</b> Полное табу на воровство и порчу. Нельзя трогать ничего чужого (даже из печек или ослов). <span class="warning">Соучастие тоже наказывается.</span></div>
+            <div class="rule-item"><span class="rule-num">1.2</span> <b>Честная игра:</b> Никаких X-ray или стороннего софта. Любое преимущество — это бан. Дюп запрещен (кроме TNT-дубликаторов для ферм).</div>
+        </div>
+
+        <div class="rule-group">
+            <h3>🏗 Этикет застройки</h3>
+            <div class="rule-item"><span class="rule-num">2.1</span> <b>Дистанция:</b> Минимум <span class="accent">500-800 блоков</span> от соседа. Выбирай место заранее.</div>
+            <div class="rule-item"><span class="rule-num">2.2</span> <b>Чистота мира:</b> Запрещены «столбы» под собой. Дорубай деревья до конца. Взорвался крипер — заделай дыру сразу.</div>
+            <div class="rule-item"><span class="rule-num">2.3</span> <b>Общественные зоны:</b> Спавн, хаб и дороги в Незере неприкосновенны.</div>
+        </div>
+
+        <div class="rule-group">
+            <h3>🤝 Социальное взаимодействие</h3>
+            <div class="rule-item"><span class="rule-num">3.1</span> <b>Фермы:</b> Пользоваться чужой фермой без спроса нельзя, если она не помечена как «Общественная».</div>
+            <div class="rule-item"><span class="rule-num">3.2</span> <b>Токсичность:</b> Мы ценим дружную игру. Никакой политики, рекламы и спама. Торговля только внутриигровая (бартер).</div>
+        </div>
+    </section>
+
+    <section id="join" style="text-align: center;">
+        <h2>Попасть в GreenWay</h2>
+        <p>Мы проводим ручной отбор. Напиши анкету в нашем Discord, и мы свяжемся с тобой!</p>
+        <br>
+        <a href="https://discord.gg/f7tRbcFm" class="btn" style="background: #5865F2; color: white;">Зайти в Discord</a>
+        
+        <div class="tip-box" style="margin-top: 40px;">
+            💡 <b>Совет:</b> Планируешь масштабную базу? Отлети на пару тысяч блоков от спавна, чтобы точно иметь простор для творчества!
+        </div>
+    </section>
+</div>
+
+<footer>
+    &copy; 2026 GreenWay Project. Ламповое выживание в Minecraft.
+</footer>
+
+</body>
+</html>
