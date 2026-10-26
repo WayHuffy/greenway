@@ -125,7 +125,7 @@ async def web_server():
     site = web.TCPSite(runner, '0.0.0.0', 10000)
     await site.start()
 
-async main():
+async def main():
     # Запускаем веб-сервер и телеграм-бота одновременно
     await web_server()
     await dp.start_polling()
