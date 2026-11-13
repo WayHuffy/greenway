@@ -7,7 +7,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 TOKEN = "8799427639:AAGEjYP6CKdSPKBaDArpvE6g1XasvUoODDk"
-ADMIN_ID = 8864442941  
+ADMIN_IDS = [8864442941, 8822149359]  
 
 bot = Bot(token=TOKEN)
 storage = MemoryStorage()
@@ -188,7 +188,7 @@ async def process_decision(callback: types.CallbackQuery):
             await bot.send_message(target_user_id, status_text)
             await bot.send_message(
                 target_user_id, 
-                "Вот ссылка для доступа к нашему комьюнити и информации: https://t.me/+nf_IvcdJEA5iMGNi"
+                "Вот ссылка для доступа к нашему комьюнити и информации: https://t.me/+2mPMUjSMu0xmYmQy"
             )
         except Exception:
             pass
