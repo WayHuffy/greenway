@@ -7,7 +7,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 TOKEN = "8799427639:AAGEjYP6CKdSPKBaDArpvE6g1XasvUoODDk"
-ADMIN_IDS = [8864442941, 8822149359]  
+ADMIN_IDS = [8864442941, 8822149359] 
 
 bot = Bot(token=TOKEN)
 storage = MemoryStorage()
