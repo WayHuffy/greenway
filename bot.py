@@ -42,6 +42,7 @@ dp = Dispatcher(bot, storage=storage)
 
 
 class Form(StatesGroup):
+    license = State()
     age = State()
     nickname = State()
     plans = State()
@@ -108,11 +109,21 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "• Экономика: Взаимодействие и торговля строятся напрямую между игроками.\n"
         "• Атмосфера: Строго следим за отсутствием токсичности и гриферов. Есть VoiceChat, Emotecraft и защита.\n\n"
         "Начнем анкету!\n\n"
-        "1. Возраст: Сколько тебе лет?"
+        "1. Лицензия: Есть ли она у тебя? (Напиши свой ответ)"
     )
 
     await message.answer(welcome_text)
-    await Form.age.set()
+    await Form.license.set()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.license)
+async def process_license(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['license'] = text_content
+    await message.answer("2. Возраст: Сколько тебе лет?")
+    await Form.next()
 
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.age)
@@ -121,7 +132,7 @@ async def process_age(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['age'] = text_content
-    await message.answer("2. Никнейм: Напиши свой точный ник в Minecraft (для вайтлиста).")
+    await message.answer("3. Никнейм: Напиши свой точный ник в Minecraft (для вайтлиста).")
     await Form.next()
 
 
@@ -131,7 +142,7 @@ async def process_nickname(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['nickname'] = text_content
-    await message.answer("3. Чем планируете заниматься на сервере?")
+    await message.answer("4. Чем планируете заниматься на сервере?")
     await Form.next()
 
 
@@ -141,7 +152,7 @@ async def process_plans(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['plans'] = text_content
-    await message.answer("4. Был ли у вас опыт игры на приватных серверах?")
+    await message.answer("5. Был ли у вас опыт игры на приватных серверах?")
     await Form.next()
 
 
@@ -151,7 +162,7 @@ async def process_experience(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['experience'] = text_content
-    await message.answer("5. Какие сильные стороны у вас есть?")
+    await message.answer("6. Какие сильные стороны у вас есть?")
     await Form.next()
 
 
@@ -163,7 +174,7 @@ async def process_strengths(message: types.Message, state: FSMContext):
         data['strengths'] = text_content
 
     await message.answer(
-        "6. Если у вас есть скриншоты ваших построек/проектов — пришлите их сюда.\n\n"
+        "7. Если у вас есть скриншоты ваших построек/проектов — пришлите их сюда.\n\n"
         "Вы можете отправить несколько фото или файлов (png, jpg) за раз (альбомом).\n"
         "Когда закончите — напишите «готово» (или любой текст), чтобы перейти к следующему вопросу.\n"
         "Если нечего показать — просто напишите «нет»."
@@ -202,7 +213,7 @@ async def finish_screenshots(message: types.Message, state: FSMContext):
         data.setdefault('documents', [])
         data['screenshots_text'] = text_content
 
-    await message.answer("7. Опишите себя как человека.")
+    await message.answer("8. Опишите себя как человека.")
     await Form.next()
 
 
@@ -213,7 +224,7 @@ async def process_about_self(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['about_self'] = text_content
     await message.answer(
-        "8. Что для вас значит «адекватность»? Дайте развёрнутый, аргументированный ответ."
+        "9. Что для вас значит «адекватность»? Дайте развёрнутый, аргументированный ответ."
     )
     await Form.next()
 
@@ -226,7 +237,7 @@ async def process_adequacy(message: types.Message, state: FSMContext):
         data['adequacy'] = text_content
 
     conflicts_text = (
-        "9. Ниже перечислены конфликтные ситуации. Дайте краткий ответ по каждой "
+        "10. Ниже перечислены конфликтные ситуации. Дайте краткий ответ по каждой "
         "(пишите по номерам: 1)… 2)… и т.д.):\n\n"
         "1) Кто-то сломал часть твоей фермы, сказав, что «тут будет лучше дорога». "
         "Какие твои первые шаги?\n\n"
@@ -255,7 +266,7 @@ async def process_conflicts(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['conflicts'] = text_content
     await message.answer(
-        "10. Чем именно вы будете полезны серверу? Почему именно вас мы должны взять?"
+        "11. Чем именно вы будете полезны серверу? Почему именно вас мы должны взять?"
     )
     await Form.next()
 
@@ -322,16 +333,17 @@ async def process_final(message: types.Message, state: FSMContext):
         f"📝 Новая заявка на сервер GreenWay!\n\n"
         f"👤 {user.full_name} ({username})\n"
         f"🆔 ID: {user_id}\n\n"
-        f"1) Возраст: {form_data['age']}\n\n"
-        f"2) Никнейм: {form_data['nickname']}\n\n"
-        f"3) Чем планирует заниматься: {form_data['plans']}\n\n"
-        f"4) Опыт на приватных серверах: {form_data['experience']}\n\n"
-        f"5) Сильные стороны: {form_data['strengths']}\n\n"
-        f"6) Скриншоты: {screenshots_line}\n\n"
-        f"7) О себе: {form_data['about_self']}\n\n"
-        f"8) Что значит адекватность: {form_data['adequacy']}\n\n"
-        f"9) Ответы на конфликтные ситуации:\n{form_data['conflicts']}\n\n"
-        f"10) Чем полезен серверу: {form_data['usefulness']}\n\n"
+        f"1) Лицензия: {form_data['license']}\n\n"
+        f"2) Возраст: {form_data['age']}\n\n"
+        f"3) Никнейм: {form_data['nickname']}\n\n"
+        f"4) Чем планирует заниматься: {form_data['plans']}\n\n"
+        f"5) Опыт на приватных серверах: {form_data['experience']}\n\n"
+        f"6) Сильные стороны: {form_data['strengths']}\n\n"
+        f"7) Скриншоты: {screenshots_line}\n\n"
+        f"8) О себе: {form_data['about_self']}\n\n"
+        f"9) Что значит адекватность: {form_data['adequacy']}\n\n"
+        f"10) Ответы на конфликтные ситуации:\n{form_data['conflicts']}\n\n"
+        f"11) Чем полезен серверу: {form_data['usefulness']}\n\n"
         f"Согласие с правилами: {form_data['rules_agreement']}"
     )
 
