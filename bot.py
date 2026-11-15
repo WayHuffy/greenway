@@ -19,6 +19,20 @@ PORT = int(os.getenv("PORT", 10000))
 
 processed_requests: set[int] = set()
 
+# Хранилище ID медиа-групп (чтобы не спамить при отправке альбомов)
+processed_media_groups = set()
+
+def is_duplicate_media_group(message: types.Message) -> bool:
+    """Проверяет, обрабатывали ли мы уже это сообщение из медиа-группы."""
+    if message.media_group_id:
+        if message.media_group_id in processed_media_groups:
+            return True
+        processed_media_groups.add(message.media_group_id)
+        # Очистка, чтобы не забивать память
+        if len(processed_media_groups) > 2000:
+            processed_media_groups.clear()
+    return False
+
 # ============================================================
 #  ИНИЦИАЛИЗАЦИЯ
 # ============================================================
@@ -51,7 +65,7 @@ def get_admin_keyboard(user_id: int):
 
 
 async def send_long_text(chat_id: int, text: str, reply_markup=None):
-    """Отправляет длинный текст несколькими сообщениями (лимит ТГ — 4096 символов)."""
+    """Отправляет длинный текст несколькими сообщениями."""
     if len(text) <= 4000:
         await bot.send_message(chat_id, text, reply_markup=reply_markup)
         return
@@ -103,6 +117,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.age)
 async def process_age(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['age'] = text_content
@@ -112,6 +127,7 @@ async def process_age(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.nickname)
 async def process_nickname(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['nickname'] = text_content
@@ -121,6 +137,7 @@ async def process_nickname(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.plans)
 async def process_plans(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['plans'] = text_content
@@ -130,6 +147,7 @@ async def process_plans(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.experience)
 async def process_experience(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['experience'] = text_content
@@ -139,34 +157,41 @@ async def process_experience(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.strengths)
 async def process_strengths(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['strengths'] = text_content
 
     await message.answer(
         "6. Если у вас есть скриншоты ваших построек/проектов — пришлите их сюда.\n\n"
-        "Можно отправить несколько фото — по одному за раз, они все сохранятся.\n"
-        "Когда закончите — напишите «готово» (или любой текст, чтобы продолжить).\n"
+        "Вы можете отправить несколько фото или файлов (png, jpg) за раз (альбомом).\n"
+        "Когда закончите — напишите «готово» (или любой текст), чтобы перейти к следующему вопросу.\n"
         "Если нечего показать — просто напишите «нет»."
     )
     await Form.next()
 
 
-# --- Сбор скриншотов: фото и файлы накапливаются, текстом завершаем шаг ---
+# --- Сбор скриншотов: обрабатываем и фото, и файлы ---
 @dp.message_handler(content_types=['photo', 'document'], state=Form.screenshots)
 async def collect_screenshots(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data.setdefault('photos', [])
         data.setdefault('documents', [])
+        
         if message.photo:
             data['photos'].append(message.photo[-1].file_id)
         elif message.document:
+            # Если прислали PNG/JPG файлом, чтобы не сжалось
             data['documents'].append(message.document.file_id)
+            
         total = len(data['photos']) + len(data['documents'])
 
-    await message.answer(
-        f"Принято, файлов: {total}. Пришлите ещё или напишите «готово», чтобы продолжить."
-    )
+    # Отвечаем только на одиночное фото/файл, чтобы не спамить при отправке альбома
+    if not message.media_group_id:
+        await message.answer(f"✅ Принято! Всего файлов: {total}.\nПришлите ещё или напишите «готово», чтобы продолжить.")
+    elif not is_duplicate_media_group(message):
+        # Отвечаем один раз на начало медиа-группы
+        await message.answer(f"✅ Группа файлов принимается...\nПришлите ещё или напишите «готово», чтобы продолжить.")
 
 
 @dp.message_handler(content_types=['text'], state=Form.screenshots)
@@ -183,6 +208,7 @@ async def finish_screenshots(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.about_self)
 async def process_about_self(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['about_self'] = text_content
@@ -194,6 +220,7 @@ async def process_about_self(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.adequacy)
 async def process_adequacy(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['adequacy'] = text_content
@@ -223,6 +250,7 @@ async def process_adequacy(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.conflicts)
 async def process_conflicts(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['conflicts'] = text_content
@@ -234,6 +262,7 @@ async def process_conflicts(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.usefulness)
 async def process_usefulness(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['usefulness'] = text_content
@@ -264,6 +293,7 @@ async def process_usefulness(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.rules_agreement)
 async def process_final(message: types.Message, state: FSMContext):
+    if is_duplicate_media_group(message): return
     text_content = message.text or message.caption or "[Согласие подтверждено]"
 
     async with state.proxy() as data:
@@ -318,7 +348,7 @@ async def process_final(message: types.Message, state: FSMContext):
                 except Exception as e:
                     logging.error(f"Не удалось отправить фото {i} админу {admin_id}: {e}")
 
-            # 2. Отправляем документы (если были)
+            # 2. Отправляем документы (если были PNG/JPG файлом)
             for i, doc_id in enumerate(documents, 1):
                 try:
                     await bot.send_document(admin_id, document=doc_id, caption=f"📎 Файл {i} от {user.full_name}")
