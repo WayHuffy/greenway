@@ -10,10 +10,6 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 # ============================================================
 #  НАСТРОЙКИ
 # ============================================================
-# Лучше вынести в переменные окружения Render:
-#   TOKEN       — токен бота
-#   ADMIN_IDS   — ID админов через запятую: 8864442941,8822149359
-#   PORT        — порт (Render подставит сам)
 TOKEN = os.getenv("TOKEN", "8799427639:AAGEjYP6CKdSPKBaDArpvE6g1XasvUoODDk")
 
 _admin_ids_env = os.getenv("ADMIN_IDS", "8864442941,8822149359")
@@ -21,7 +17,6 @@ ADMIN_IDS = [int(x.strip()) for x in _admin_ids_env.split(",") if x.strip()]
 
 PORT = int(os.getenv("PORT", 10000))
 
-# Множество уже обработанных заявок (чтобы не одобрить дважды)
 processed_requests: set[int] = set()
 
 # ============================================================
@@ -33,11 +28,16 @@ dp = Dispatcher(bot, storage=storage)
 
 
 class Form(StatesGroup):
-    license = State()
-    nickname = State()
     age = State()
+    nickname = State()
     plans = State()
-    experience_and_skill = State()
+    experience = State()
+    strengths = State()
+    screenshots = State()
+    about_self = State()
+    adequacy = State()
+    conflicts = State()
+    usefulness = State()
     rules_agreement = State()
 
 
@@ -48,6 +48,33 @@ def get_admin_keyboard(user_id: int):
         types.InlineKeyboardButton(text="Отклонить", callback_data=f"reject_{user_id}")
     )
     return keyboard
+
+
+async def send_long_text(chat_id: int, text: str, reply_markup=None):
+    """Отправляет длинный текст несколькими сообщениями (лимит ТГ — 4096 символов)."""
+    if len(text) <= 4000:
+        await bot.send_message(chat_id, text, reply_markup=reply_markup)
+        return
+
+    chunks = []
+    remaining = text
+    while remaining:
+        if len(remaining) <= 4000:
+            chunks.append(remaining)
+            break
+        split_at = remaining.rfind('\n', 0, 4000)
+        if split_at == -1:
+            split_at = 4000
+        chunks.append(remaining[:split_at])
+        remaining = remaining[split_at:].lstrip('\n')
+
+    for i, chunk in enumerate(chunks):
+        is_last = (i == len(chunks) - 1)
+        await bot.send_message(
+            chat_id,
+            chunk,
+            reply_markup=reply_markup if is_last else None
+        )
 
 
 # ============================================================
@@ -67,19 +94,19 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "• Экономика: Взаимодействие и торговля строятся напрямую между игроками.\n"
         "• Атмосфера: Строго следим за отсутствием токсичности и гриферов. Есть VoiceChat, Emotecraft и защита.\n\n"
         "Начнем анкету!\n\n"
-        "1. Лицензия: Есть ли она у тебя? (Напиши свой ответ)"
+        "1. Возраст: Сколько тебе лет?"
     )
 
     await message.answer(welcome_text)
-    await Form.license.set()
+    await Form.age.set()
 
 
-@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.license)
-async def process_license(message: types.Message, state: FSMContext):
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.age)
+async def process_age(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
-        data['license'] = text_content
-    await message.answer("2. Ник в Minecraft: (Напиши свой точный ник для добавления в вайтлист)")
+        data['age'] = text_content
+    await message.answer("2. Никнейм: Напиши свой точный ник в Minecraft (для вайтлиста).")
     await Form.next()
 
 
@@ -88,16 +115,7 @@ async def process_nickname(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['nickname'] = text_content
-    await message.answer("3. Возраст: (Сколько тебе лет?)")
-    await Form.next()
-
-
-@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.age)
-async def process_age(message: types.Message, state: FSMContext):
-    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
-    async with state.proxy() as data:
-        data['age'] = text_content
-    await message.answer("4. Планы: Что именно ты хочешь построить или чем планируешь заниматься на сервере?")
+    await message.answer("3. Чем планируете заниматься на сервере?")
     await Form.next()
 
 
@@ -106,33 +124,139 @@ async def process_plans(message: types.Message, state: FSMContext):
     text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
     async with state.proxy() as data:
         data['plans'] = text_content
+    await message.answer("4. Был ли у вас опыт игры на приватных серверах?")
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.experience)
+async def process_experience(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['experience'] = text_content
+    await message.answer("5. Какие сильные стороны у вас есть?")
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.strengths)
+async def process_strengths(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['strengths'] = text_content
+
     await message.answer(
-        "5. Опыт и навыки: Играл ли ты раньше на других приватных серверах?\n"
-        "Какая твоя сильная сторона (что умеешь делать лучше всего)?\n"
-        "Прикрепи ссылки на скриншоты твоих достижений/построек (или можешь скинуть сам скриншот сюда):"
+        "6. Если у вас есть скриншоты ваших построек/проектов — пришлите их сюда.\n\n"
+        "Можно отправить несколько фото — по одному за раз, они все сохранятся.\n"
+        "Когда закончите — напишите «готово» (или любой текст, чтобы продолжить).\n"
+        "Если нечего показать — просто напишите «нет»."
     )
     await Form.next()
 
 
-@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.experience_and_skill)
-async def process_experience(message: types.Message, state: FSMContext):
+# --- Сбор скриншотов: фото и файлы накапливаются, текстом завершаем шаг ---
+@dp.message_handler(content_types=['photo', 'document'], state=Form.screenshots)
+async def collect_screenshots(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
+        data.setdefault('photos', [])
+        data.setdefault('documents', [])
         if message.photo:
-            data['experience_and_skill'] = message.caption or "Скриншот без подписи"
-            data['photo_id'] = message.photo[-1].file_id
+            data['photos'].append(message.photo[-1].file_id)
         elif message.document:
-            data['experience_and_skill'] = f"Файл-скриншот: {message.document.file_name}"
-            data['photo_id'] = None
-        else:
-            data['experience_and_skill'] = message.text or "[Текст отсутствует]"
-            data['photo_id'] = None
+            data['documents'].append(message.document.file_id)
+        total = len(data['photos']) + len(data['documents'])
+
+    await message.answer(
+        f"Принято, файлов: {total}. Пришлите ещё или напишите «готово», чтобы продолжить."
+    )
+
+
+@dp.message_handler(content_types=['text'], state=Form.screenshots)
+async def finish_screenshots(message: types.Message, state: FSMContext):
+    text_content = (message.text or "").strip()
+    async with state.proxy() as data:
+        data.setdefault('photos', [])
+        data.setdefault('documents', [])
+        data['screenshots_text'] = text_content
+
+    await message.answer("7. Опишите себя как человека.")
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.about_self)
+async def process_about_self(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['about_self'] = text_content
+    await message.answer(
+        "8. Что для вас значит «адекватность»? Дайте развёрнутый, аргументированный ответ."
+    )
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.adequacy)
+async def process_adequacy(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['adequacy'] = text_content
+
+    conflicts_text = (
+        "9. Ниже перечислены конфликтные ситуации. Дайте краткий ответ по каждой "
+        "(пишите по номерам: 1)… 2)… и т.д.):\n\n"
+        "1) Кто-то сломал часть твоей фермы, сказав, что «тут будет лучше дорога». "
+        "Какие твои первые шаги?\n\n"
+        "2) Два игрока спорят, чья идея для ивента лучше, и втягивают тебя в конфликт. "
+        "Что ты делаешь?\n\n"
+        "3) Новичок злится, потому что у него ничего не получается, и срывается на тебе. "
+        "Как ты отвечаешь?\n\n"
+        "4) Ты придумал крутую редстоун-схему, но другой игрок говорит, что она «бесполезная». "
+        "Что ты почувствуешь и как ответишь?\n\n"
+        "5) Ты долго и аккуратно строил общественный рынок, вложил много редкого декора и "
+        "продумал логистику. Другой игрок, у которого больше влияния в сообществе, просит "
+        "полностью переделать центральную площадь под свой стиль, потому что «так будет лучше "
+        "для сервера». Ты уверен, что его вариант хуже по функциональности и эстетике, но отказ "
+        "может испортить отношения. Как ты поступишь?\n\n"
+        "6) Тебе отказали в доступе к общей зоне, потому что там уже есть план застройки. "
+        "Как ты реагируешь?"
+    )
+    await message.answer(conflicts_text)
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.conflicts)
+async def process_conflicts(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['conflicts'] = text_content
+    await message.answer(
+        "10. Чем именно вы будете полезны серверу? Почему именно вас мы должны взять?"
+    )
+    await Form.next()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=Form.usefulness)
+async def process_usefulness(message: types.Message, state: FSMContext):
+    text_content = message.text or message.caption or "[Прикреплен медиа-файл]"
+    async with state.proxy() as data:
+        data['usefulness'] = text_content
 
     rules_preview = (
-        "Философия проекта и основные правила GreenWay:\n\n"
-        "1. Запреты: Гриферство, воровство чужих вещей, читы и дюпы (кроме TNT, ковров и рельс для ферм) караются перманентным баном.\n"
-        "2. Этика: Дистанция между базами — 500-800 блоков. Не оставляйте висящие деревья. Уважайте чужие границы (ставьте таблички с никами).\n"
-        "3. Атмосфера: Никакой токсичности, политики и RMT.\n\n"
-        "6. Ознакомился(-ась) ли ты со сводом правил и готов(-а) к взрослому самостоятельному выживанию? (Напиши «Да» или свой ответ)"
+        "Перед отправкой заявки — ознакомься со сводом правил GreenWay:\n\n"
+        "1. Фундаментальные запреты:\n"
+        "• Запрещено воровство из сундуков/печек/инвентарей мобов и жителей на чужих базах, "
+        "гриферство, поджоги и разлитие лавы/воды.\n"
+        "• Читы запрещены (исключение: Litematica, MiniHUD, Freecam для стройки, ReplayMod, "
+        "гамма и миникарты).\n"
+        "• Дюп запрещен (разрешены только TNT, ковры и рельсы для ферм).\n"
+        "• Соучастие наказывается наравне с нарушением.\n\n"
+        "2. Строительство и экология:\n"
+        "• Дистанция между базами — 500–800 блоков. Убирайте за собой листву, закапывайте ямы.\n"
+        "• Обязательно ставьте таблички с никами по периметру базы (приватов нет!).\n"
+        "• Не портите ландшафт гигантскими карьерами возле жилых зон.\n\n"
+        "3. Общение и чат:\n"
+        "• Запрещена токсичность, оскорбления, политика, религия и RMT.\n"
+        "• Локальный чат — 150 блоков. Глобальный — через знак ! в начале.\n"
+        "• В VoiceChat запрещены крики, спам звуками и программы для изменения голоса.\n\n"
+        "Последний шаг: напиши «Да», если ознакомился(-ась) с правилами и согласен(-на) "
+        "с ними. Или задай уточняющий вопрос."
     )
     await message.answer(rules_preview)
     await Form.next()
@@ -144,83 +268,89 @@ async def process_final(message: types.Message, state: FSMContext):
 
     async with state.proxy() as data:
         data['rules_agreement'] = text_content
-        form_data = dict(data)  # копируем, пока state жив
+        form_data = dict(data)
     await state.finish()
 
     user = message.from_user
     user_id = user.id
     username = f"@{user.username}" if user.username else "скрыт"
 
+    photos = form_data.get('photos', [])
+    documents = form_data.get('documents', [])
+    screenshots_text = form_data.get('screenshots_text', '').strip()
+
+    # Формируем строку про скриншоты для текста заявки
+    files_count = len(photos) + len(documents)
+    if files_count:
+        screenshots_line = f"прикреплено файлов: {files_count}"
+        if screenshots_text and screenshots_text.lower() not in ('готово', 'готов', 'done', 'хватит', 'всё', 'все'):
+            screenshots_line += f" (комментарий: {screenshots_text})"
+    else:
+        screenshots_line = screenshots_text or "нет"
+
     admin_text = (
-        f"Новая заявка на сервер GreenWay!\n\n"
-        f"Пользователь: {user.full_name} ({username})\n"
-        f"ID: {user_id}\n\n"
-        f"Лицензия: {form_data['license']}\n"
-        f"Ник: {form_data['nickname']}\n"
-        f"Возраст: {form_data['age']}\n"
-        f"Планы: {form_data['plans']}\n"
-        f"Опыт / Навыки / Скрины: {form_data['experience_and_skill']}\n"
-        f"Готовность / Правила: {form_data['rules_agreement']}"
+        f"📝 Новая заявка на сервер GreenWay!\n\n"
+        f"👤 {user.full_name} ({username})\n"
+        f"🆔 ID: {user_id}\n\n"
+        f"1) Возраст: {form_data['age']}\n\n"
+        f"2) Никнейм: {form_data['nickname']}\n\n"
+        f"3) Чем планирует заниматься: {form_data['plans']}\n\n"
+        f"4) Опыт на приватных серверах: {form_data['experience']}\n\n"
+        f"5) Сильные стороны: {form_data['strengths']}\n\n"
+        f"6) Скриншоты: {screenshots_line}\n\n"
+        f"7) О себе: {form_data['about_self']}\n\n"
+        f"8) Что значит адекватность: {form_data['adequacy']}\n\n"
+        f"9) Ответы на конфликтные ситуации:\n{form_data['conflicts']}\n\n"
+        f"10) Чем полезен серверу: {form_data['usefulness']}\n\n"
+        f"Согласие с правилами: {form_data['rules_agreement']}"
     )
 
-    photo_to_send = form_data.get('photo_id')
     keyboard = get_admin_keyboard(user_id)
 
-    # 🔁 Рассылаем ВСЕМ админам
     for admin_id in ADMIN_IDS:
         try:
-            if photo_to_send:
-                await bot.send_photo(
-                    admin_id,
-                    photo=photo_to_send,
-                    caption=admin_text,
-                    reply_markup=keyboard
-                )
-            else:
-                await bot.send_message(
-                    admin_id,
-                    admin_text,
-                    reply_markup=keyboard
-                )
+            # 1. Отправляем фото по одному
+            total = len(photos)
+            for i, photo_id in enumerate(photos, 1):
+                caption = f"🖼 Скриншот {i}/{total} от {user.full_name}" if total > 1 else f"🖼 Скриншот от {user.full_name}"
+                try:
+                    await bot.send_photo(admin_id, photo=photo_id, caption=caption)
+                except Exception as e:
+                    logging.error(f"Не удалось отправить фото {i} админу {admin_id}: {e}")
+
+            # 2. Отправляем документы (если были)
+            for i, doc_id in enumerate(documents, 1):
+                try:
+                    await bot.send_document(admin_id, document=doc_id, caption=f"📎 Файл {i} от {user.full_name}")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить документ {i} админу {admin_id}: {e}")
+
+            # 3. Отправляем текст заявки с кнопками
+            await send_long_text(admin_id, admin_text, reply_markup=keyboard)
+
         except Exception as e:
-            logging.error(f"Не удалось отправить админу {admin_id}: {e}")
+            logging.error(f"Не удалось отправить заявку админу {admin_id}: {e}")
 
-    full_rules_reminder = (
-        "Спасибо! Твоя заявка успешно отправлена администрации.\n\n"
-        "Пока мы рассматриваем твою анкету, внимательно изучи полный свод правил нашего сервера:\n\n"
-        "1. Фундаментальные запреты:\n"
-        "• Запрещено воровство из сундуков/печек/инвентарей мобов и жителей на чужих базах, гриферство, поджоги и разлитие лавы/воды.\n"
-        "• Читы запрещены (исключение: Litematica, MiniHUD, Freecam для стройки, ReplayMod, гамма и миникарты).\n"
-        "• Дюп запрещен (разрешены только TNT, ковры и рельсы для ферм).\n"
-        "• Соучастие наказывается наравне с нарушением.\n\n"
-        "2. Строительство и экология:\n"
-        "• Дистанция между базами — 500–800 блоков. Убирайте за собой листву, закапывайте ямы от криперов.\n"
-        "• Обязательно ставьте таблички с никами по периметру базы (приватов нет!).\n"
-        "• Не портите ландшафт гигантскими карьерами возле жилых зон.\n\n"
-        "3. Общение и чат:\n"
-        "• Запрещена токсичность, оскорбления, политика, религия и RMT (реальные деньги).\n"
-        "• Локальный чат — 150 блоков. Глобальный — через знак ! в начале.\n"
-        "• В VoiceChat запрещены крики, спам звуками и программы для изменения голоса.\n\n"
-        "Мы свяжемся с тобой в ближайшее время!"
+    thanks_text = (
+        "Спасибо! Твоя заявка успешно отправлена администрации. "
+        "Мы свяжемся с тобой в ближайшее время."
     )
-
     try:
-        await message.answer(full_rules_reminder)
+        await message.answer(thanks_text)
     except Exception:
         pass
 
 
 # ============================================================
-#  РЕШЕНИЕ АДМИНА (одобрить / отклонить)
+#  РЕШЕНИЕ АДМИНА
 # ============================================================
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith(('approve_', 'reject_')))
 async def process_decision(callback: types.CallbackQuery):
-    await callback.answer()  # сразу отвечаем Telegram
+    await callback.answer()
 
     action, user_id_str = callback.data.split("_")
     target_user_id = int(user_id_str)
 
-    # Защита от повторного нажатия (второй админ или случайный двойной клик)
     if target_user_id in processed_requests:
         try:
             await callback.message.edit_reply_markup(reply_markup=None)
@@ -249,7 +379,6 @@ async def process_decision(callback: types.CallbackQuery):
         except Exception as e:
             logging.error(f"Не удалось написать пользователю {target_user_id}: {e}")
 
-    # Правим сообщение у ТЕКУЩЕГО админа (текст ИЛИ подпись к фото)
     try:
         msg = callback.message
         suffix = f"\n\n━━━━━━━━━━━━━━━\nСтатус: {admin_status}"
@@ -264,7 +393,7 @@ async def process_decision(callback: types.CallbackQuery):
 
 
 # ============================================================
-#  ВЕБ-СЕРВЕР ДЛЯ RENDER (заглушка, чтобы сервис не засыпал)
+#  ВЕБ-СЕРВЕР ДЛЯ RENDER
 # ============================================================
 async def handle(request):
     return web.Response(text="GreenWay Bot is running!")
@@ -282,8 +411,6 @@ async def web_server():
 async def main():
     logging.basicConfig(level=logging.INFO)
     await bot.delete_webhook(drop_pending_updates=True)
-
-    # Запускаем одновременно веб-сервер и самого телеграм-бота
     await web_server()
     await dp.start_polling()
 
